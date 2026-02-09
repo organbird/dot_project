@@ -1,0 +1,39 @@
+# 가상환경 폴더 (절대 올리면 안 됨)
+.venv/
+venv/
+env/
+
+# 파이썬 컴파일 파일 (올릴 필요 없음)
+__pycache__/
+*.pyc
+
+# 환경 변수 파일 (비밀번호 들어있음 - 보안상 절대 금지!)
+.env
+
+# 운영체제 잡동사니
+.DS_Store
+Thumbs.db
+
+# 도커/데이터 관련 (용량이 커서 Git 거부됨)
+data/
+ai_models/
+backend/uploads/*
+# 폴더 구조 유지용
+!backend/uploads/.gitkeep
+
+# 프론트 관련
+node_modules/
+
+# IDE 설정 파일 (서로 공유 안 함)
+.vscode/
+.idea/
+*.iml
+
+# Windows metadata files
+*:Zone.Identifier
+
+# 음성/미디어 대용량 파일
+*.m4a
+*.wav
+*.mp3
+*.mp4
