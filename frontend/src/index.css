@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Tailwind v4: class 기반 다크모드 활성화 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    /* 기존 login.html에서 사용하던 색상 테마 정의 */
+    --color-primary: #f27f0d;
+    --color-primary-hover: #d96d00;
+    --color-background-light: #fcfaf8;
+    --color-background-dark: #221910;
+    --color-card-dark: #2d241b;
+    --color-text-main: #1c140d;
+    --color-text-muted: #9c7349;
+    --color-border-light: #e8dbce;
+    --color-border-dark: #4a3b2f;
+
+    /* 폰트 정의 */
+    --font-display: "Space Grotesk", "Noto Sans KR", sans-serif;
+}
+
+/* Space Grotesk 폰트 - 로컬 파일 */
+@font-face {
+    font-family: 'Space Grotesk';
+    src: url('/fonts/SpaceGrotesk-Light.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Space Grotesk';
+    src: url('/fonts/SpaceGrotesk-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Space Grotesk';
+    src: url('/fonts/SpaceGrotesk-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Space Grotesk';
+    src: url('/fonts/SpaceGrotesk-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+body {
+    font-family: 'Noto Sans KR', var(--font-display);
+    background-color: var(--color-background-light);
+    margin: 0;
+}
+
+/* 다크모드 body 배경색 */
+.dark body {
+    background-color: var(--color-background-dark);
+}

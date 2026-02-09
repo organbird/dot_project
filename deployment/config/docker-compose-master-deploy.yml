@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # 1. 메인 API 서버 (FastAPI + LLM)
+  backend:
+    image: dot-project-backend:latest
+    restart: on-failure
+    container_name: dot_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai_models:/ai_models
+      - ./backend/uploads/images:/app/uploads/images
+      - ./backend/uploads/documents:/app/uploads/documents
+      - ./backend/uploads/meetings:/app/uploads/meetings
+      - ./backend/uploads/chroma_db:/app/uploads/chroma_db
+    depends_on:
+      - db
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - DATABASE_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
+      - REDIS_URL=redis://redis:6379/${REDIS_DB}
+      - PYTHONPATH=/app
+      - TRANSLATION_MODE=${TRANSLATION_MODE:-llm}
+      - HF_HOME=/ai_models/embedding
+      - HF_HUB_OFFLINE=1
+    networks:
+      - dot_network
+
+  # 2. 데이터베이스 (MySQL 8.0)
+  db:
+    image: mysql:8.0
+    container_name: dot_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${WORKER_DB_USER}"
+      MYSQL_PASSWORD: "${WORKER_DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - dot_network
+
+  # 3. 메시지 브로커 (Redis)
+  redis:
+    image: redis:alpine
+    container_name: dot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dot_network
+
+  # 4. 프론트엔드 (React)
+  frontend:
+    image: dot-project-frontend:latest
+    container_name: dot_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+    depends_on:
+      - backend
+    networks:
+      - dot_network
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  dot_network:
+    driver: bridge

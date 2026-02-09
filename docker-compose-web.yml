@@ -1,0 +1,78 @@
+services:
+  # -------------------------------------------------------
+  # 1. 개발용 백엔드 (FastAPI)
+  # -------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: dot_backend_web
+    restart: on-failure
+    ports:
+      - "8001:8000"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+    volumes:
+      # [Hot Reload] PC 3의 로컬 코드는 실시간 반영
+      - ./backend:/app
+
+      # 로컬 LLM 모델 파일 마운트
+      - ./ai_models/llm:/ai_models/llm
+
+      # 이미지 생성 모델 마운트
+      - ./ai_models/image:/ai_models/image
+
+      # 생성된 이미지 저장 경로
+      - ./backend/uploads/images:/app/uploads/images
+
+      # 업로드 경로 (같은 PC 테스트용)
+      - ${UPLOAD_PATH}:/ai_models/uploads
+
+    environment:
+      # PC1(Master)의 DB/Redis에 IP로 접속 (MASTER_IP를 .env에 설정)
+      - DATABASE_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${MASTER_IP}:3306/${DB_NAME}
+      - REDIS_URL=redis://${MASTER_IP}:6379/${REDIS_DB}
+      - PYTHONPATH=/app
+      - ALLOW_ORIGINS=${ALLOW_ORIGINS}
+      - TRANSLATION_MODE=${TRANSLATION_MODE:-llm}
+
+    networks:
+      - dot_web_network
+
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # -------------------------------------------------------
+  # 2. 개발용 프론트엔드 (Vite + React)
+  # -------------------------------------------------------
+  frontend:
+    build: ./frontend
+    container_name: dot_frontend_web
+    ports:
+      - "5174:5173"
+
+    environment:
+      # VITE_API_URL을 비워두면 프론트엔드가 자동으로 포트 매핑 (5174->8001)
+      - VITE_API_URL=
+      - CHOKIDAR_USEPOLLING=true
+
+    volumes:
+      # 프론트엔드 코드는 로컬 파일 사용 (Hot Reload)
+      - ./frontend:/app
+      - /app/node_modules
+
+    networks:
+      - dot_web_network
+
+    command: npm run dev -- --host
+
+# -------------------------------------------------------
+# 독립 네트워크 (PC1의 DB/Redis에는 IP로 직접 접속)
+# -------------------------------------------------------
+networks:
+  dot_web_network:
+    driver: bridge

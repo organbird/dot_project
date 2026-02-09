@@ -1,0 +1,284 @@
+# ============================================================================
+# Ai DOT - CD (Continuous Deployment) Pipeline
+# ============================================================================
+# 분산 서버 배포 구성:
+#   - Main Server: DB, Redis, Backend, Frontend (docker-compose-master.yml)
+#   - Worker Server: Celery Worker with GPU (docker-compose-worker.yml)
+# ============================================================================
+
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: '배포 대상 선택'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - main
+          - worker
+      environment:
+        description: '배포 환경'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================================================
+  # Build Docker Images
+  # ==========================================================================
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tag
+        id: meta
+        run: |
+          VERSION=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_NAME_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME_LOWER" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION, image: $IMAGE_NAME_LOWER"
+
+      # Frontend Image
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}/frontend:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}/frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Backend Image
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}/backend:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name }}/backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================================================
+  # Deploy to Main Server
+  # - DB, Redis, Backend, Frontend
+  # ==========================================================================
+  deploy-main:
+    name: Deploy Main Server
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (github.event.inputs.deploy_target == 'all' ||
+       github.event.inputs.deploy_target == 'main' ||
+       github.event.inputs.deploy_target == '')
+    environment:
+      name: main-server
+
+    steps:
+      - name: Deploy to Main Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.MAIN_SSH_HOST }}
+          username: ${{ secrets.MAIN_SSH_USERNAME }}
+          key: ${{ secrets.MAIN_SSH_KEY }}
+          port: ${{ secrets.MAIN_SSH_PORT || 22 }}
+          script: |
+            echo "=========================================="
+            echo "Deploying to Main Server"
+            echo "=========================================="
+
+            cd ${{ secrets.MAIN_DEPLOY_PATH }}
+
+            # 최신 코드 가져오기
+            git pull origin main
+
+            # 환경변수 파일 확인
+            if [ ! -f .env ]; then
+              echo "Error: .env file not found"
+              exit 1
+            fi
+
+            # Docker Compose로 서비스 재시작
+            docker compose -f docker-compose-master.yml pull
+            docker compose -f docker-compose-master.yml down
+            docker compose -f docker-compose-master.yml up -d
+
+            # 헬스체크
+            sleep 15
+            echo "Checking services..."
+            docker ps
+
+            curl -sf http://localhost:8000/health && echo "✅ Backend OK" || echo "❌ Backend Failed"
+            curl -sf http://localhost:5173 && echo "✅ Frontend OK" || echo "❌ Frontend Failed"
+
+            # 정리
+            docker system prune -f
+
+            echo "Main Server deployment completed at $(date)"
+
+  # ==========================================================================
+  # Deploy to Worker Server
+  # - Celery Worker (GPU 서버)
+  # ==========================================================================
+  deploy-worker:
+    name: Deploy Worker Server
+    runs-on: ubuntu-latest
+    needs: [build, deploy-main]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (github.event.inputs.deploy_target == 'all' ||
+       github.event.inputs.deploy_target == 'worker' ||
+       github.event.inputs.deploy_target == '')
+    environment:
+      name: worker-server
+
+    steps:
+      - name: Deploy to Worker Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.WORKER_SSH_HOST }}
+          username: ${{ secrets.WORKER_SSH_USERNAME }}
+          key: ${{ secrets.WORKER_SSH_KEY }}
+          port: ${{ secrets.WORKER_SSH_PORT || 22 }}
+          script: |
+            echo "=========================================="
+            echo "Deploying to Worker Server"
+            echo "=========================================="
+
+            cd ${{ secrets.WORKER_DEPLOY_PATH }}
+
+            # 최신 코드 가져오기
+            git pull origin main
+
+            # 환경변수 파일 확인
+            if [ ! -f .env ]; then
+              echo "Error: .env file not found"
+              exit 1
+            fi
+
+            # 기존 Worker 컨테이너 중지
+            docker compose -f docker-compose-worker.yml down
+
+            # Backend 이미지 빌드 (Worker가 사용)
+            echo "Building backend image for worker..."
+            docker build -t dot-project-backend:latest ./backend
+
+            # Worker 서비스 시작
+            docker compose -f docker-compose-worker.yml up -d
+
+            # Worker 상태 확인
+            sleep 10
+            echo "Checking Worker status..."
+            docker ps | grep worker
+            docker logs dot_worker_pc2 --tail 20
+
+            # GPU 상태 확인
+            nvidia-smi || echo "GPU check skipped"
+
+            # 정리
+            docker system prune -f
+
+            echo "Worker Server deployment completed at $(date)"
+
+  # ==========================================================================
+  # Deployment Summary
+  # ==========================================================================
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-main, deploy-worker]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Server | Status | Services |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Main | ${{ needs.deploy-main.result }} | DB, Redis, Backend, Frontend |" >> $GITHUB_STEP_SUMMARY
+          echo "| Worker | ${{ needs.deploy-worker.result }} | Celery Worker (GPU) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================================================
+  # Rollback
+  # ==========================================================================
+  rollback:
+    name: Rollback Servers
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy-main, deploy-worker]
+
+    steps:
+      - name: Rollback Main Server
+        if: needs.deploy-main.result == 'failure'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.MAIN_SSH_HOST }}
+          username: ${{ secrets.MAIN_SSH_USERNAME }}
+          key: ${{ secrets.MAIN_SSH_KEY }}
+          script: |
+            cd ${{ secrets.MAIN_DEPLOY_PATH }}
+            git reset --hard HEAD~1
+            docker compose -f docker-compose-master.yml down
+            docker compose -f docker-compose-master.yml up -d
+            echo "Main Server rollback completed"
+
+      - name: Rollback Worker Server
+        if: needs.deploy-worker.result == 'failure'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.WORKER_SSH_HOST }}
+          username: ${{ secrets.WORKER_SSH_USERNAME }}
+          key: ${{ secrets.WORKER_SSH_KEY }}
+          script: |
+            cd ${{ secrets.WORKER_DEPLOY_PATH }}
+            git reset --hard HEAD~1
+            docker compose -f docker-compose-worker.yml down
+            docker compose -f docker-compose-worker.yml up -d
+            echo "Worker Server rollback completed"

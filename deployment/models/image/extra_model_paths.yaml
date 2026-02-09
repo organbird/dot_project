@@ -1,0 +1,8 @@
+# ComfyUI 추가 모델 경로 설정
+# 호스트에서 마운트된 모델들을 인식하도록 설정
+
+custom_models:
+    base_path: /models
+    diffusion_models: unet/
+    text_encoders: clip/
+    vae: vae/

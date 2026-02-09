@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai DOT - 시연 발표</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #ffffff;
+            color: #1f2937;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            padding: 60px 100px;
+            position: relative;
+            background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+        }
+
+        .slide.active { display: flex; flex-direction: column; }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .nav button {
+            background: #f97316;
+            border: none;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Pretendard', sans-serif;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .nav button:hover {
+            background: #ea580c;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+        }
+
+        .slide-counter {
+            position: fixed;
+            bottom: 38px;
+            left: 40px;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 100;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f97316, #fb923c);
+            transition: width 0.3s ease;
+            z-index: 100;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.2;
+            color: #111827;
+        }
+
+        h2 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: #111827;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #374151;
+        }
+
+        .accent { color: #f97316; }
+        .muted { color: #6b7280; }
+        .highlight { color: #2563eb; }
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: #6b7280;
+            margin-bottom: 48px;
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        /* Layout */
+        .center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex: 1;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 32px;
+            flex: 1;
+            align-items: stretch;
+        }
+
+        .flex-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .col { flex: 1; }
+
+        /* Cards */
+        .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 28px 32px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        }
+
+        .card:hover {
+            border-color: #f97316;
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f97316;
+            margin-bottom: 16px;
+        }
+
+        .card-body {
+            font-size: 0.95rem;
+            color: #4b5563;
+            line-height: 1.8;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+        .badge-blue { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .badge-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .badge-purple { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background: #f97316;
+            color: #fff;
+            text-align: left;
+            padding: 14px 18px;
+            font-weight: 600;
+        }
+
+        th:first-child { border-radius: 12px 0 0 0; }
+        th:last-child { border-radius: 0 12px 0 0; }
+
+        td {
+            padding: 12px 18px;
+            border-bottom: 1px solid #f3f4f6;
+            color: #374151;
+        }
+
+        tr:hover td { background: #fff7ed; }
+
+        /* Code block */
+        .code-block {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 24px 28px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: #94a3b8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* Architecture */
+        .arch-box {
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .arch-box.master {
+            border-color: #f97316;
+            background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+        }
+
+        .arch-box.worker {
+            border-color: #2563eb;
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+        }
+
+        .arch-label {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+        }
+
+        .arch-items {
+            font-size: 0.85rem;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 1.5rem;
+            padding: 10px;
+            font-weight: 600;
+        }
+
+        /* Feature */
+        .feature-icon {
+            font-size: 2.2rem;
+            margin-bottom: 16px;
+        }
+
+        /* List */
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 8px 0;
+            color: #4b5563;
+            font-size: 0.95rem;
+        }
+
+        ul li::before {
+            content: "▸";
+            color: #f97316;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        .tag-fe { background: #dbeafe; color: #1d4ed8; }
+        .tag-be { background: #dcfce7; color: #15803d; }
+        .tag-ai { background: #ffedd5; color: #c2410c; }
+        .tag-infra { background: #f3e8ff; color: #7c3aed; }
+
+        /* Title Slide */
+        .title-slide {
+            background: linear-gradient(135deg, #ffffff 0%, #fff7ed 50%, #ffedd5 100%);
+        }
+
+        .title-slide .logo {
+            font-size: 5.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 24px;
+        }
+
+        /* Stats */
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #f97316;
+        }
+
+        .stat-label {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 32px;
+            text-align: center;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 32px 20px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+
+        /* Section Tag */
+        .section-tag {
+            display: inline-block;
+            padding: 6px 16px;
+            background: #f97316;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        /* Thank You Slide */
+        .thankyou-slide {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%);
+        }
+
+        .thankyou-slide h1,
+        .thankyou-slide .subtitle {
+            color: #fff;
+        }
+
+        .thankyou-slide .logo {
+            color: #fff;
+            -webkit-text-fill-color: #fff;
+        }
+
+        .qa-box {
+            margin-top: 48px;
+            padding: 28px 56px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .qa-box p {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* Inner arch box */
+        .arch-inner {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active title-slide">
+        <div class="center">
+            <div class="logo">Ai DOT.</div>
+            <h1>AI 기반 업무 협업 플랫폼</h1>
+            <p class="subtitle">
+                Document Operations & Teamwork<br>
+                로컬 AI로 구현하는 스마트 업무 환경
+            </p>
+            <div style="margin-top: 28px;">
+                <span class="tag tag-ai">LLaMA 3 Bllossom</span>
+                <span class="tag tag-ai">Stable Diffusion 3.5</span>
+                <span class="tag tag-ai">Whisper STT</span>
+                <span class="tag tag-fe">React 19</span>
+                <span class="tag tag-be">FastAPI</span>
+                <span class="tag tag-infra">Docker</span>
+            </div>
+            <p style="margin-top: 48px; color: #9ca3af; font-size: 1rem; font-weight: 500;">2026.02</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: Project Overview -->
+    <div class="slide">
+        <span class="section-tag">PROJECT OVERVIEW</span>
+        <h2>프로젝트 <span class="accent">개요</span></h2>
+        <div class="flex-row">
+            <div class="col flex-col">
+                <div class="card">
+                    <div class="card-title">📋 프로젝트 배경</div>
+                    <div class="card-body">
+                        기업 환경에서 문서, 회의, 일정 등 업무 도구가 분산되어 있어 생산성 저하.<br><br>
+                        AI 기술을 활용하여 <strong>통합 업무 플랫폼</strong>을 구축하고,
+                        <strong>폐쇄망</strong>에서도 동작하는 온프레미스 AI 서비스를 제공.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🎯 핵심 목표</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>외부 API 없이 <strong>로컬 GPU</strong>에서 모든 AI 처리</li>
+                            <li>Master-Worker <strong>분산 아키텍처</strong>로 확장성 확보</li>
+                            <li>업로드 문서 기반 <strong>RAG</strong> 지능형 응답</li>
+                            <li>실시간 스트리밍 AI 대화</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col flex-col">
+                <div class="card" style="flex:1;">
+                    <div class="card-title">✨ 주요 기능 7가지</div>
+                    <div class="card-body">
+                        <table>
+                            <tr><td><span class="badge badge-orange">AI</span></td><td>RAG 기반 AI 챗봇</td></tr>
+                            <tr><td><span class="badge badge-orange">AI</span></td><td>AI 이미지 생성 (SD 3.5)</td></tr>
+                            <tr><td><span class="badge badge-orange">AI</span></td><td>회의록 STT + AI 요약</td></tr>
+                            <tr><td><span class="badge badge-blue">기능</span></td><td>문서 보관함 + RAG 인덱싱</td></tr>
+                            <tr><td><span class="badge badge-blue">기능</span></td><td>일정 관리 (캘린더)</td></tr>
+                            <tr><td><span class="badge badge-green">관리</span></td><td>관리자 대시보드</td></tr>
+                            <tr><td><span class="badge badge-green">관리</span></td><td>사용자/부서 관리</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: Tech Stack -->
+    <div class="slide">
+        <span class="section-tag">TECHNOLOGY</span>
+        <h2>기술 <span class="accent">스택</span></h2>
+        <div class="flex-row" style="gap: 28px;">
+            <div class="col">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title" style="color: #2563eb;">🎨 Frontend</div>
+                    <div class="card-body">
+                        <span class="tag tag-fe">React 19</span>
+                        <span class="tag tag-fe">Vite 7</span>
+                        <span class="tag tag-fe">TailwindCSS 4</span>
+                        <span class="tag tag-fe">Recharts</span>
+                        <span class="tag tag-fe">Axios</span>
+                        <span class="tag tag-fe">React Router 6</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="color: #16a34a;">⚙️ Backend</div>
+                    <div class="card-body">
+                        <span class="tag tag-be">FastAPI 0.109</span>
+                        <span class="tag tag-be">SQLAlchemy 2.0</span>
+                        <span class="tag tag-be">Celery</span>
+                        <span class="tag tag-be">Redis</span>
+                        <span class="tag tag-be">MySQL 8.0</span>
+                        <span class="tag tag-be">Pydantic</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title" style="color: #ea580c;">🤖 AI / ML</div>
+                    <div class="card-body">
+                        <span class="tag tag-ai">LLaMA 3 Bllossom 8B</span>
+                        <span class="tag tag-ai">SD 3.5 Medium</span>
+                        <span class="tag tag-ai">Whisper Large-v3</span>
+                        <span class="tag tag-ai">LangChain</span>
+                        <span class="tag tag-ai">ChromaDB</span>
+                        <span class="tag tag-ai">ko-sbert-nli</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="color: #7c3aed;">🏗️ Infrastructure</div>
+                    <div class="card-body">
+                        <span class="tag tag-infra">Docker</span>
+                        <span class="tag tag-infra">Docker Compose</span>
+                        <span class="tag tag-infra">CUDA 12.1</span>
+                        <span class="tag tag-infra">NVIDIA Toolkit</span>
+                        <span class="tag tag-infra">ComfyUI</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: Architecture -->
+    <div class="slide">
+        <span class="section-tag">ARCHITECTURE</span>
+        <h2>시스템 <span class="accent">아키텍처</span></h2>
+        <div class="flex-row" style="gap: 24px; flex: 1; align-items: center;">
+            <div class="col" style="flex: 1;">
+                <div style="text-align: center; margin-bottom: 12px;">
+                    <div class="arch-box" style="display: inline-block; padding: 14px 40px;">
+                        <div class="arch-label" style="color: #374151;">🌐 Client (Browser)</div>
+                        <div class="arch-items">React 19 + Vite 7</div>
+                    </div>
+                </div>
+                <div class="arrow">↓</div>
+                <div class="arch-box master" style="margin-bottom: 12px;">
+                    <div class="arch-label" style="color: #ea580c; font-size: 1.1rem;">🖥️ PC1 - Master Server</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px;">
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #2563eb; font-size: 0.85rem;">Frontend</div>
+                            <div class="arch-items">:5173</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #16a34a; font-size: 0.85rem;">Backend</div>
+                            <div class="arch-items">:8000</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #7c3aed; font-size: 0.85rem;">MySQL</div>
+                            <div class="arch-items">:3306</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #dc2626; font-size: 0.85rem;">Redis</div>
+                            <div class="arch-items">:6379</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px;">
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #ea580c; font-size: 0.85rem;">LLM (Bllossom 8B)</div>
+                            <div class="arch-items">GPU VRAM</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #ea580c; font-size: 0.85rem;">RAG (ChromaDB)</div>
+                            <div class="arch-items">Vector Search</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arrow">↓ Celery Task Queue (Redis)</div>
+                <div class="arch-box worker">
+                    <div class="arch-label" style="color: #2563eb; font-size: 1.1rem;">🔧 PC2 - Worker Server</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #ea580c; font-size: 0.85rem;">ComfyUI</div>
+                            <div class="arch-items">SD 3.5 Medium</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #ea580c; font-size: 0.85rem;">Whisper STT</div>
+                            <div class="arch-items">Large-v3</div>
+                        </div>
+                        <div class="arch-inner">
+                            <div class="arch-label" style="color: #ea580c; font-size: 0.85rem;">Embedding</div>
+                            <div class="arch-items">ko-sbert-nli</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: AI Features -->
+    <div class="slide">
+        <span class="section-tag">CORE FEATURES</span>
+        <h2>AI 핵심 <span class="accent">기능</span></h2>
+        <div class="flex-row" style="gap: 24px;">
+            <div class="col">
+                <div class="card" style="height: 100%;">
+                    <div class="feature-icon">💬</div>
+                    <div class="card-title">AI 챗봇 (RAG)</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>LLaMA 3 Bllossom 8B 한국어 LLM</li>
+                            <li>업로드 문서 기반 RAG 응답</li>
+                            <li>실시간 스트리밍 (SSE)</li>
+                            <li>대화 세션 관리</li>
+                            <li>Redis 컨텍스트 캐싱</li>
+                            <li>자동 요약으로 토큰 최적화</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="height: 100%;">
+                    <div class="feature-icon">🎨</div>
+                    <div class="card-title">AI 이미지 생성</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>Stable Diffusion 3.5 Medium</li>
+                            <li>ComfyUI + GGUF 경량화</li>
+                            <li>한글 프롬프트 자동 번역</li>
+                            <li>다양한 스타일/크기 선택</li>
+                            <li>Celery 비동기 처리</li>
+                            <li>이미지 갤러리 관리</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="height: 100%;">
+                    <div class="feature-icon">🎙️</div>
+                    <div class="card-title">회의록 분석 (STT)</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>Faster Whisper Large-v3</li>
+                            <li>MP3, WAV, M4A 등 지원</li>
+                            <li>음성 → 텍스트 자동 변환</li>
+                            <li>LLM 기반 자동 요약</li>
+                            <li>실시간 처리 상태 모니터링</li>
+                            <li>직접 작성 모드 병행</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: Other Features -->
+    <div class="slide">
+        <span class="section-tag">FEATURES</span>
+        <h2>업무 관리 <span class="accent">기능</span></h2>
+        <div class="flex-row" style="gap: 24px;">
+            <div class="col">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="feature-icon">📄</div>
+                    <div class="card-title">문서 보관함</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>PDF, DOC, DOCX, XLS, PPT, TXT, HWP 지원</li>
+                            <li>업로드 시 자동 RAG 벡터화</li>
+                            <li>카테고리 필터링 (업무/개인/아이디어)</li>
+                            <li>제목/내용 검색, 페이지네이션</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">📅</div>
+                    <div class="card-title">일정 관리</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>월별 캘린더 뷰</li>
+                            <li>카테고리별 색상 구분 (5종)</li>
+                            <li>일정 CRUD (등록/수정/삭제)</li>
+                            <li>날짜별 일정 목록 표시</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="feature-icon">📊</div>
+                    <div class="card-title">관리자 대시보드</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>서버 리소스 실시간 모니터링 (CPU/MEM/DISK)</li>
+                            <li>일별 활동 추이 차트 (Recharts)</li>
+                            <li>AI 기능 사용 현황 / 부서별 분포</li>
+                            <li>실시간 시스템 로그 / 성공률</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="feature-icon">👥</div>
+                    <div class="card-title">사용자/부서 관리</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>사용자 목록 조회/검색</li>
+                            <li>권한 변경 (USER / ADMIN)</li>
+                            <li>비밀번호 초기화</li>
+                            <li>부서 관리 및 직원 이동</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: Technical Highlights -->
+    <div class="slide">
+        <span class="section-tag">TECHNICAL DETAILS</span>
+        <h2>기술적 <span class="accent">특징</span></h2>
+        <div class="flex-row" style="gap: 24px;">
+            <div class="col flex-col" style="gap: 20px;">
+                <div class="card">
+                    <div class="card-title">🔄 RAG 파이프라인</div>
+                    <div class="card-body">
+                        <div class="code-block" style="font-size: 0.85rem;">문서 업로드
+  ↓ PDF 파싱 (PyPDF)
+  ↓ 텍스트 청킹 (LangChain)
+  ↓ 임베딩 (ko-sbert-nli)
+  ↓ ChromaDB 저장
+
+질문 입력
+  ↓ 임베딩 변환
+  ↓ 유사도 검색 (ChromaDB)
+  ↓ 관련 문서 추출
+  ↓ LLM 컨텍스트 주입
+  ↓ 응답 생성</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col flex-col" style="gap: 20px;">
+                <div class="card">
+                    <div class="card-title">⚡ 실시간 스트리밍</div>
+                    <div class="card-body">
+                        <div class="code-block" style="font-size: 0.85rem;">사용자 질문
+  ↓ FastAPI Backend
+  ↓ LLM 토큰 생성
+  ↓ Redis Queue (Producer)
+  ↓ SSE Stream (Consumer)
+  ↓ Frontend 실시간 표시</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">🎮 GPU VRAM 관리</div>
+                    <div class="card-body">
+                        <div class="code-block" style="font-size: 0.85rem;">PC1: LLM 전용 (Thread Lock)
+PC2: Image + STT (Celery Worker)
+
+→ 분산 처리로 VRAM 충돌 방지
+→ Lock 기반 순차 접근 제어</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: Screens Overview -->
+    <div class="slide">
+        <span class="section-tag">UI / UX</span>
+        <h2>화면 <span class="accent">구성</span> <span class="muted" style="font-size: 1.4rem;">(18개)</span></h2>
+        <div class="flex-row" style="gap: 32px;">
+            <div class="col">
+                <h3>공개 화면</h3>
+                <table>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>메인 랜딩 페이지</td><td class="muted">/</td></tr>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>로그인</td><td class="muted">/login</td></tr>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>회원가입</td><td class="muted">/signup</td></tr>
+                </table>
+                <h3 style="margin-top: 28px;">사용자 화면</h3>
+                <table>
+                    <tr><td><span class="badge badge-blue">User</span></td><td>홈 (대시보드)</td><td class="muted">/home</td></tr>
+                    <tr><td><span class="badge badge-orange">AI</span></td><td>AI 챗봇</td><td class="muted">/chatbot</td></tr>
+                    <tr><td><span class="badge badge-orange">AI</span></td><td>AI 이미지 생성</td><td class="muted">/images</td></tr>
+                    <tr><td><span class="badge badge-blue">User</span></td><td>문서 보관함</td><td class="muted">/documents</td></tr>
+                    <tr><td><span class="badge badge-orange">AI</span></td><td>회의록 분석</td><td class="muted">/meeting</td></tr>
+                    <tr><td><span class="badge badge-blue">User</span></td><td>일정 관리</td><td class="muted">/schedule</td></tr>
+                    <tr><td><span class="badge badge-blue">User</span></td><td>마이페이지</td><td class="muted">/mypage</td></tr>
+                </table>
+            </div>
+            <div class="col">
+                <h3>관리자 화면</h3>
+                <table>
+                    <tr><td><span class="badge badge-purple">Admin</span></td><td>대시보드</td><td class="muted">/dashboard</td></tr>
+                    <tr><td><span class="badge badge-purple">Admin</span></td><td>사용자 관리</td><td class="muted">/admin/settings</td></tr>
+                    <tr><td><span class="badge badge-purple">Admin</span></td><td>부서 관리</td><td class="muted">/admin/depts</td></tr>
+                </table>
+                <h3 style="margin-top: 28px;">Admin Portal 화면</h3>
+                <table>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>인덱스</td><td class="muted">Portal /</td></tr>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>다운로드</td><td class="muted">Portal /download</td></tr>
+                    <tr><td><span class="badge badge-green">Public</span></td><td>로그인</td><td class="muted">Portal /login</td></tr>
+                    <tr><td><span class="badge badge-purple">Admin</span></td><td>배포 현황</td><td class="muted">Portal /dashboard</td></tr>
+                    <tr><td><span class="badge badge-purple">Admin</span></td><td>라이선스</td><td class="muted">Portal /license</td></tr>
+                </table>
+                <h3 style="margin-top: 28px;">API 엔드포인트</h3>
+                <table>
+                    <tr><td>인증</td><td>3개</td></tr>
+                    <tr><td>AI 챗봇</td><td>8개</td></tr>
+                    <tr><td>이미지</td><td>7개</td></tr>
+                    <tr><td>문서</td><td>8개</td></tr>
+                    <tr><td>회의록</td><td>6개</td></tr>
+                    <tr><td>일정</td><td>5개</td></tr>
+                    <tr><td>사용자</td><td>5개</td></tr>
+                    <tr><td>관리자</td><td>9개</td></tr>
+                    <tr style="font-weight: bold;"><td>합계</td><td><span class="accent">50+</span>개</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: Database -->
+    <div class="slide">
+        <span class="section-tag">DATABASE</span>
+        <h2>데이터베이스 <span class="accent">설계</span></h2>
+        <div class="flex-row" style="gap: 32px;">
+            <div class="col">
+                <h3>ERD (9개 테이블)</h3>
+                <div class="code-block" style="font-size: 0.9rem; line-height: 1.9;">
+  [depts] ──&lt; [users] ──┬──&lt; [chat_sessions] ──&lt; [chat_messages]
+                          ├──&lt; [documents]
+                          ├──&lt; [generated_images]
+                          ├──&lt; [meeting_notes]
+                          ├──&lt; [schedules]
+                          └──&lt; [system_logs]</div>
+                <div style="margin-top: 28px;">
+                    <h3>🔐 보안 설계</h3>
+                    <table>
+                        <tr><td>인증</td><td>JWT 토큰 (24시간 만료)</td></tr>
+                        <tr><td>암호화</td><td>bcrypt 해싱 (Passlib)</td></tr>
+                        <tr><td>권한</td><td>역할 기반 접근 제어 (USER/ADMIN)</td></tr>
+                        <tr><td>SQL Injection</td><td>SQLAlchemy ORM 파라미터 바인딩</td></tr>
+                        <tr><td>감사</td><td>SystemLog 전체 활동 기록</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="col">
+                <h3>테이블 상세</h3>
+                <table>
+                    <thead><tr><th>테이블</th><th>설명</th><th>주요 컬럼</th></tr></thead>
+                    <tbody>
+                        <tr><td>depts</td><td>부서</td><td>dept_name</td></tr>
+                        <tr><td>users</td><td>사용자</td><td>email, role, dept_idx</td></tr>
+                        <tr><td>chat_sessions</td><td>대화 세션</td><td>title, summary</td></tr>
+                        <tr><td>chat_messages</td><td>대화 메시지</td><td>sender, content, refs</td></tr>
+                        <tr><td>documents</td><td>문서</td><td>title, chroma_id</td></tr>
+                        <tr><td>generated_images</td><td>이미지</td><td>prompt, img_file</td></tr>
+                        <tr><td>meeting_notes</td><td>회의록</td><td>transcript, summary</td></tr>
+                        <tr><td>schedules</td><td>일정</td><td>title, date, category</td></tr>
+                        <tr><td>system_logs</td><td>시스템 로그</td><td>action, ip_addr</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: Results -->
+    <div class="slide">
+        <span class="section-tag">RESULTS</span>
+        <h2>프로젝트 <span class="accent">성과</span></h2>
+        <div style="margin: 48px 0;">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-number">18</div>
+                    <div class="stat-label">전체 화면</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">API 엔드포인트</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">9</div>
+                    <div class="stat-label">DB 테이블</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">AI 모델</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">6</div>
+                    <div class="stat-label">Docker 서비스</div>
+                </div>
+            </div>
+        </div>
+        <h3>🚀 기술적 도전과 해결</h3>
+        <div class="card" style="margin-top: 16px;">
+            <table>
+                <thead><tr><th>도전</th><th>해결</th></tr></thead>
+                <tbody>
+                    <tr><td>GPU 메모리 부족</td><td>Master-Worker 분산 구조로 부하 분배</td></tr>
+                    <tr><td>LLM 응답 지연</td><td>Redis Queue + SSE 스트리밍</td></tr>
+                    <tr><td>한글 이미지 프롬프트</td><td>LLM 한글 → 영어 자동 번역</td></tr>
+                    <tr><td>대화 컨텍스트 관리</td><td>Redis 캐싱 + 자동 요약 최적화</td></tr>
+                    <tr><td>폐쇄망 제약</td><td>모든 모델 로컬 GGUF/CTranslate2 경량화</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: Thank You -->
+    <div class="slide thankyou-slide">
+        <div class="center">
+            <div class="logo" style="font-size: 5rem; font-weight: 900; margin-bottom: 28px;">
+                Ai DOT.
+            </div>
+            <h1 style="font-size: 3.2rem;">감사합니다</h1>
+            <p class="subtitle" style="margin-top: 20px; opacity: 0.9;">
+                AI 기반 업무 협업 플랫폼<br>
+                Document Operations & Teamwork
+            </p>
+            <div class="qa-box">
+                <p>Q & A</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav">
+        <button onclick="prevSlide()">← Prev</button>
+        <button onclick="nextSlide()">Next →</button>
+    </div>
+    <div class="slide-counter" id="slideCounter"></div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${totalSlides}`;
+            document.getElementById('progressBar').style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+        }
+
+        function nextSlide() { showSlide(currentSlide + 1); }
+        function prevSlide() { showSlide(currentSlide - 1); }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                nextSlide();
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+                e.preventDefault();
+                prevSlide();
+            }
+            if (e.key === 'Home') { showSlide(0); }
+            if (e.key === 'End') { showSlide(totalSlides - 1); }
+        });
+
+        showSlide(0);
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# ComfyUI Docker 이미지 (SD 3.5 GGUF 용)
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# 시스템 패키지
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-venv \
+    git curl \
+    libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python 심볼릭 링크
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+# 작업 디렉토리
+WORKDIR /app
+
+# PyTorch 설치 (CUDA 12.1)
+RUN pip install --no-cache-dir \
+    torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 \
+    --extra-index-url https://download.pytorch.org/whl/cu121
+
+# ComfyUI 클론
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /app/ComfyUI
+
+# ComfyUI 의존성
+WORKDIR /app/ComfyUI
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ComfyUI-GGUF 클론
+RUN git clone https://github.com/city96/ComfyUI-GGUF.git /app/ComfyUI/custom_nodes/ComfyUI-GGUF
+RUN pip install --no-cache-dir gguf
+
+# output 폴더 생성
+RUN mkdir -p /app/ComfyUI/output && chmod 777 /app/ComfyUI/output
+
+# 포트
+EXPOSE 8188
+
+# 실행 (--normalvram: VRAM 8GB에서 모델 스왑 최소화, 성능 향상)
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--normalvram"]

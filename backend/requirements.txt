@@ -1,0 +1,58 @@
+# --- PyTorch (GPU: CUDA 12.1) ---
+# PC1: LLM 엔진에서 사용
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.4.0
+torchvision==0.19.0
+torchaudio==2.4.0
+
+# --- Web Framework ---
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+python-dotenv==1.0.1
+
+# --- Database & ORM ---
+sqlalchemy==2.0.25
+pymysql==1.1.0
+redis==5.0.1
+
+# --- Async Task Queue ---
+celery==5.3.6
+flower==2.0.1
+
+# --- Security ---
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+cryptography==42.0.2
+python-jose[cryptography]==3.3.0
+
+# --- AI & LLM Engine ---
+llama-cpp-python
+
+# --- RAG & Vector DB (LangChain) ---
+langchain==0.2.14
+langchain-community==0.2.12
+langchain-core==0.2.33
+langchain-text-splitters==0.2.2
+langchain-chroma==0.1.2
+langchain-huggingface==0.0.3
+sentence-transformers==2.7.0
+chromadb==0.4.22
+pypdf==4.0.1
+
+# --- STT (Speech-to-Text) ---
+# PC2 Worker: Faster Whisper (CTranslate2 기반, INT8 양자화)
+faster-whisper==1.0.3
+
+# --- Image Generation (ComfyUI API Client) ---
+# PC2 Worker: ComfyUI 사이드카와 HTTP/WebSocket 통신
+websocket-client==1.7.0
+Pillow==10.4.0
+
+# --- Utils ---
+requests==2.31.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0.post1
+psutil==5.9.8
+huggingface-hub==0.25.2

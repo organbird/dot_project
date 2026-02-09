@@ -1,0 +1,132 @@
+# =============================================================================
+# PC2 Worker Node - ComfyUI Sidecar Architecture
+# =============================================================================
+# Worker: Celery 작업 처리 (GPU 공유 - 임베딩 상시 + 이미지/STT 동적 로딩)
+# ComfyUI: 이미지 생성 전담 (GPU 공유)
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # =========================================================================
+  # Worker Service (Celery) - GPU 공유 (배치 인식 동적 로딩)
+  # =========================================================================
+  worker:
+    image: dot-project-backend:latest
+    container_name: dot_worker_pc2
+    working_dir: /app
+
+    # Solo 모드 유지
+    command: celery -A worker.celery_app worker --loglevel=info -I worker.tasks --pool=solo -Q celery,gpu_image,gpu_stt
+
+    environment:
+      - DATABASE_URL=mysql+pymysql://${WORKER_DB_USER}:${WORKER_DB_PASSWORD}@${MASTER_IP}:3306/${DB_NAME}
+      - REDIS_URL=redis://${MASTER_IP}:6379/${REDIS_DB}
+      # PC1 백엔드 API URL (이미지 HTTP 전송, LLM 요약 호출 등)
+      - MASTER_API_URL=http://${MASTER_IP}:8000
+      # Python 모듈 경로 (ai_core 등 패키지 import에 필요)
+      - PYTHONPATH=/app
+      # ComfyUI 연결 설정
+      - COMFYUI_HOST=comfyui
+      - COMFYUI_PORT=8188
+      # STT 모델 경로 (Faster Whisper large-v3)
+      - STT_MODEL_PATH=/models/faster-whisper-large-v3
+      # HuggingFace 오프라인 모드 (폐쇄망용)
+      - HF_HOME=/ai_models/embedding
+      - HF_HUB_OFFLINE=1
+
+    volumes:
+      - ./backend:/app
+      # ComfyUI 출력 폴더 공유 (Docker named volume)
+      - comfyui_output:/ai_models/image/output
+      # STT 모델 마운트 (Faster Whisper large-v3, 폐쇄망 로컬 로드)
+      - ./ai_models/stt/faster-whisper-large-v3:/models/faster-whisper-large-v3
+      # 임베딩 모델 마운트 (HuggingFace 오프라인 모드)
+      - ./ai_models/embedding:/ai_models/embedding
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    env_file:
+      - .env
+
+    depends_on:
+      - comfyui
+
+    networks:
+      - worker_net
+
+  # =========================================================================
+  # ComfyUI Service - GPU 전용
+  # =========================================================================
+  comfyui:
+    build:
+      context: ./ai_models/image
+      dockerfile: Dockerfile.comfyui
+    image: dot-comfyui:latest
+    container_name: dot_comfyui_pc2
+    restart: unless-stopped
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+
+    volumes:
+      # =====================================================================
+      # 모델 파일 마운트 (커스텀 이미지 경로: /app/ComfyUI)
+      # =====================================================================
+      - ./ai_models/image/unet:/app/ComfyUI/models/diffusion_models
+      - ./ai_models/image/clip:/app/ComfyUI/models/text_encoders
+      - ./ai_models/image/vae:/app/ComfyUI/models/vae
+
+      # 출력 폴더 (Worker와 공유)
+      - comfyui_output:/app/ComfyUI/output
+
+    ports:
+      - "8188:8188"  # 디버깅용 (프로덕션에서는 제거 가능)
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    networks:
+      - worker_net
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188/system_stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  worker_net:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  # ComfyUI 출력 폴더 (Worker와 공유)
+  comfyui_output:
+    driver: local
+
+  # [사용 안 함] SMB 공유 폴더 - HTTP 전송으로 대체됨
+  # remote_share:
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     o: "username=${SMB_USERNAME},password=${SMB_PASSWORD},vers=3.0,addr=${MASTER_IP},sec=ntlmssp"
+  #     device: "//${MASTER_IP}/${SMB_SHARE}"

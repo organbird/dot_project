@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # 1. Celery Worker (이미지 생성, STT, RAG 임베딩)
+  worker:
+    image: dot-project-backend:latest
+    container_name: dot_worker
+    restart: on-failure
+    command: celery -A worker.celery_app worker --loglevel=info -I worker.tasks --pool=solo -Q celery,gpu_image,gpu_stt
+
+    environment:
+      - DATABASE_URL=mysql+pymysql://${WORKER_DB_USER}:${WORKER_DB_PASSWORD}@${MASTER_IP}:3306/${DB_NAME}
+      - REDIS_URL=redis://${MASTER_IP}:6379/${REDIS_DB}
+      - MASTER_API_URL=http://${MASTER_IP}:8000
+      - PYTHONPATH=/app
+      - COMFYUI_HOST=comfyui
+      - COMFYUI_PORT=8188
+      - STT_MODEL_PATH=/models/faster-whisper-large-v3
+      - HF_HOME=/ai_models/embedding
+      - HF_HUB_OFFLINE=1
+
+    volumes:
+      - comfyui_output:/ai_models/image/output
+      - ./ai_models/stt/faster-whisper-large-v3:/models/faster-whisper-large-v3
+      - ./ai_models/embedding:/ai_models/embedding
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    depends_on:
+      comfyui:
+        condition: service_healthy
+
+    networks:
+      - worker_network
+
+  # 2. ComfyUI (이미지 생성 엔진)
+  comfyui:
+    image: dot-comfyui:latest
+    container_name: dot_comfyui
+    restart: on-failure
+    ports:
+      - "8188:8188"
+
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+
+    volumes:
+      - comfyui_output:/app/ComfyUI/output
+      - ./ai_models/image/unet:/app/ComfyUI/models/diffusion_models
+      - ./ai_models/image/clip:/app/ComfyUI/models/text_encoders
+      - ./ai_models/image/vae:/app/ComfyUI/models/vae
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+    networks:
+      - worker_network
+
+volumes:
+  comfyui_output:
+
+networks:
+  worker_network:
+    driver: bridge
